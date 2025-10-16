@@ -1,13 +1,11 @@
 import React from 'react';
 import CodeforcesGraph from '../components/CodeforcesGraph';
-import LeetCodeGraph from '../components/LeetcodeGraph';
 import CodeChefGraph from '../components/CodeChefGraph';
 import LazyAnimate from '../components/LazyAnimate';
 
 const CodingProfiles = () => {
   // Your profile handles
   const codeforcesHandle = 'rid.dhi_1509';
-  const leetcodeUsername = 'jainriddhi78';
   const codechefHandle = 'nice_scene_20';
 
   return (
@@ -23,10 +21,6 @@ const CodingProfiles = () => {
          <LazyAnimate>
         <CodeforcesGraph handle={codeforcesHandle} />
          </LazyAnimate>
-        {/* LeetCode Graph - Solved Problems Breakdown */}
-         {/* <LazyAnimate>
-        <LeetCodeGraph username={leetcodeUsername} />
-        </LazyAnimate> */}
         {/* CodeChef Graph - Rating Overview */}
         <LazyAnimate>
         <CodeChefGraph handle={codechefHandle} />
