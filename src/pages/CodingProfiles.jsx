@@ -3,8 +3,6 @@ import CodeforcesGraph from '../components/CodeforcesGraph';
 import LeetCodeGraph from '../components/LeetcodeGraph';
 import CodeChefGraph from '../components/CodeChefGraph';
 import LazyAnimate from '../components/LazyAnimate';
-// NOTE: This component is assumed to be running in an environment 
-// where the CSS with the .card-wrapper and .dark styles is loaded.
 
 const CodingProfiles = () => {
   // Your profile handles
@@ -26,9 +24,9 @@ const CodingProfiles = () => {
         <CodeforcesGraph handle={codeforcesHandle} />
          </LazyAnimate>
         {/* LeetCode Graph - Solved Problems Breakdown */}
-         <LazyAnimate>
+         {/* <LazyAnimate>
         <LeetCodeGraph username={leetcodeUsername} />
-        </LazyAnimate>
+        </LazyAnimate> */}
         {/* CodeChef Graph - Rating Overview */}
         <LazyAnimate>
         <CodeChefGraph handle={codechefHandle} />
@@ -39,7 +37,6 @@ const CodingProfiles = () => {
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Data fetched live from external APIs and visualized using Recharts. Handles: 
           <span className="font-mono text-github-accent ml-2">{codeforcesHandle}</span> (CF),
-          <span className="font-mono text-github-accent ml-2">{leetcodeUsername}</span> (LC),
           <span className="font-mono text-github-accent ml-2">{codechefHandle}</span> (CC).
         </p>
       </div>
