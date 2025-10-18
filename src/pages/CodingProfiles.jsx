@@ -25,9 +25,6 @@ const CodingProfiles = () => {
           <CodeChefGraph handle={codechefHandle} />
         </LazyAnimate>
 
-        <LazyAnimate>
-          <LeetCodeGraph username={leetcodeUsername} />
-        </LazyAnimate>
       </div>
 
       <div className="mt-12 p-4 border-t border-github-border text-center">
