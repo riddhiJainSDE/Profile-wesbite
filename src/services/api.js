@@ -2,7 +2,6 @@ const BASE_URL = "https://profile-wesbite.onrender.com";
 
 export const fetchCodeforcesRatings = async (handle) => {
   try {
-    // Updated to use the deployed base URL
     const res = await fetch(`${BASE_URL}/api/codeforces/${handle}`);
     if (!res.ok) throw new Error("Failed to fetch Codeforces data");
     const data = await res.json();
@@ -27,13 +26,19 @@ export const fetchCodeChefData = async (handle) => {
 
 export const fetchLeetCodeStats = async (username) => {
   try {
-    // Updated to use the deployed base URL for the POST endpoint
     const res = await fetch(`${BASE_URL}/api/leetcode`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username }),
     });
-    if (!res.ok) throw new Error("Failed to fetch LeetCode data");
+
+    if (!res.ok) {
+        // If the server returns a non-200 status (e.g., 400 or 500), 
+        // try to extract the specific error message from the JSON body.
+        const errorBody = await res.json();
+        throw new Error(errorBody.error || `Failed to fetch LeetCode data with status: ${res.status}`);
+    }
+
     return await res.json();
   } catch (err) {
     console.error("Error fetching LeetCode:", err.message);
