@@ -2,14 +2,13 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
-import { PROFILE_DATA } from "./src/data/profileData.js"; // Assuming this path is correct
+import { PROFILE_DATA } from "./src/data/profileData.js";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-// Set CORS to allow requests from the frontend deployment
 app.use(
   cors({
     origin: "https://profile-wesbite.vercel.app", 
@@ -26,7 +25,7 @@ if (!GEMINI_API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-// Convert PROFILE_DATA into readable grounding text
+// (Grounding Text logic omitted for brevity, assuming it remains unchanged)
 const groundingText = `
 Name: ${PROFILE_DATA.user.name}
 Bio: ${PROFILE_DATA.user.bio}
@@ -114,7 +113,7 @@ app.get("/api/codeforces/:handle", async (req, res) => {
     const handle = req.params.handle;
     const response = await fetch(`https://codeforces.com/api/user.rating?handle=${handle}`);
     const data = await response.json();
-    res.json(data); // Forward the Codeforces API response
+    res.json(data);
   } catch (err) {
     console.error("Error fetching Codeforces:", err.message);
     res.status(500).json({ error: "Failed to fetch Codeforces data" });
@@ -123,35 +122,46 @@ app.get("/api/codeforces/:handle", async (req, res) => {
 
 
 // =======================================================
-// === 3. LeetCode Proxy Endpoint (FIXED) ================
+// === 3. LeetCode Proxy Endpoint (FIXED WITH TIMEOUT) ===
 // =======================================================
 
 app.post("/api/leetcode", async (req, res) => {
   const { username } = req.body;
   if (!username) return res.status(400).json({ error: "Username required" });
 
-  try {
-    const LEETCODE_QUERY = `
-      query userStats($username: String!) {
-        matchedUser(username: $username) {
-          username
-          submitStatsGlobal {
-            acSubmissionNum {
-              difficulty
-              count
-            }
+  const LEETCODE_QUERY = `
+    query userStats($username: String!) {
+      matchedUser(username: $username) {
+        username
+        submitStatsGlobal {
+          acSubmissionNum {
+            difficulty
+            count
           }
-          userContestRanking {
-            rating
-            globalRanking
-            attendedContestsCount
-          }
-          submissionCalendar
         }
+        userContestRanking {
+          rating
+          globalRanking
+          attendedContestsCount
+        }
+        submissionCalendar
       }
-    `;
+    }
+  `;
+  
+  // Helper function to set a timeout for the fetch request
+  const fetchWithTimeout = (url, options, timeout = 10000) => {
+    return Promise.race([
+      fetch(url, options),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Proxy fetch timed out')), timeout)
+      )
+    ]);
+  };
 
-    const response = await fetch("https://leetcode.com/graphql", {
+  try {
+    // Use the timeout fetch helper
+    const response = await fetchWithTimeout("https://leetcode.com/graphql", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -160,18 +170,18 @@ app.post("/api/leetcode", async (req, res) => {
       }),
     });
 
-    // CRITICAL: Check if the response itself was OK
-    if (!response.ok) {
-        throw new Error(`LeetCode API request failed with status: ${response.status}`);
-    }
+    // Check if the response itself was OK (e.g., status 200)
+    if (!response.ok) {
+        throw new Error(`LeetCode API request failed with status: ${response.status}`);
+    }
 
     const data = await response.json();
     const user = data.data?.matchedUser;
 
-    // CRITICAL: Check if the user data was successfully retrieved
+    // Check if the user data was successfully retrieved (GraphQL errors often appear here)
     if (!user || data.errors) {
       console.error("LeetCode GraphQL Errors:", data.errors);
-      throw new Error(data.errors?.[0]?.message || "Invalid username or no data returned by LeetCode.");
+      throw new Error(data.errors?.[0]?.message || "Invalid username or no user data found.");
     }
     
     const totalSolvedStats = user.submitStatsGlobal.acSubmissionNum;
@@ -183,15 +193,21 @@ app.post("/api/leetcode", async (req, res) => {
       hardSolved: totalSolvedStats.find(d => d.difficulty === "Hard")?.count || 0,
       totalSolved: totalSolvedStats.find(d => d.difficulty === "All")?.count || 0, 
       
-      // Using || null and || '{}' for safety against missing keys
       contestRanking: user.userContestRanking || null, 
       submissionCalendar: user.submissionCalendar || '{}',
     });
     
   } catch (error) {
     console.error("Error fetching LeetCode via proxy:", error.message);
-    // Respond with a 400 if the error implies bad user input (e.g., invalid username)
-    const status = (error.message.includes("Invalid username") || error.message.includes("status: 400")) ? 400 : 500;
+    
+    // Assign status based on error type
+    let status = 500;
+    if (error.message.includes("timed out")) {
+      status = 504; // Gateway Timeout
+    } else if (error.message.includes("Invalid username")) {
+      status = 400; // Bad Request
+    }
+
     res.status(status).json({ error: error.message || "Failed to fetch LeetCode data on server" });
   }
 });
