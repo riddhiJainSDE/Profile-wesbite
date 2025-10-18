@@ -9,10 +9,9 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// Allow CORS from frontend
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://profile-wesbite.vercel.app/",
   })
 );
 
@@ -110,4 +109,113 @@ if (firstCandidate && firstCandidate.content) {
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
+});
+
+app.post("/api/leetcode", async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ error: "Username required" });
+
+  try {
+    const response = await fetch("https://leetcode.com/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "https://leetcode.com",
+        Referer: "https://leetcode.com/",
+      },
+      body: JSON.stringify({
+        query: `
+          query getUserProfile($username: String!) {
+            matchedUser(username: $username) {
+              username
+              submitStatsGlobal {
+                acSubmissionNum {
+                  difficulty
+                  count
+                }
+              }
+              profile {
+                ranking
+                reputation
+              }
+            }
+          }
+        `,
+        variables: { username },
+      }),
+    });
+
+    const data = await response.json();
+    if (!data.data?.matchedUser) throw new Error("Invalid username");
+
+    const user = data.data.matchedUser;
+    res.json({
+      username: user.username,
+      easySolved: user.submitStatsGlobal.acSubmissionNum.find(d => d.difficulty === "Easy")?.count || 0,
+      mediumSolved: user.submitStatsGlobal.acSubmissionNum.find(d => d.difficulty === "Medium")?.count || 0,
+      hardSolved: user.submitStatsGlobal.acSubmissionNum.find(d => d.difficulty === "Hard")?.count || 0,
+      totalSolved: user.submitStatsGlobal.acSubmissionNum.find(d => d.difficulty === "All")?.count || 0,
+      ranking: user.profile.ranking,
+      reputation: user.profile.reputation,
+    });
+  } catch (error) {
+    console.error("Error fetching LeetCode via proxy:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+// server.js (add below existing app.use(...) lines)
+
+// Codeforces proxy endpoint
+app.get("/api/codeforces/:handle", async (req, res) => {
+  try {
+    const handle = req.params.handle;
+    const response = await fetch(`https://codeforces.com/api/user.rating?handle=${handle}`);
+    const data = await response.json();
+    res.json(data); // Forward the Codeforces API response
+  } catch (err) {
+    console.error("Error fetching Codeforces:", err.message);
+    res.status(500).json({ error: "Failed to fetch Codeforces data" });
+  }
+});
+
+// LeetCode proxy endpoint
+app.post("/api/leetcode", async (req, res) => {
+  try {
+    const { username } = req.body;
+    const query = {
+      query: `
+        query getUserProfile($username: String!) {
+          matchedUser(username: $username) {
+            username
+            submitStatsGlobal {
+              acSubmissionNum {
+                difficulty
+                count
+              }
+            }
+            profile {
+              ranking
+              reputation
+            }
+          }
+          allQuestionsCount {
+            difficulty
+            count
+          }
+        }
+      `,
+      variables: { username }
+    };
+
+    const response = await fetch("https://leetcode.com/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(query),
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error("Error fetching LeetCode:", err.message);
+    res.status(500).json({ error: "Failed to fetch LeetCode data" });
+  }
 });

@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Lightbulb, Code, Terminal } from 'lucide-react'; 
 import radarGif from '../assets/radar.gif'; 
-
-// --- Consolidated Hard Skills Data ---
 const hardSkills = [
     { 
         name: 'Languages', 

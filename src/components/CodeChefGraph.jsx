@@ -1,108 +1,84 @@
-import React, { useState, useEffect } from 'react';
-import {
-  RadialBarChart, RadialBar, Legend, Tooltip, ResponsiveContainer
-} from 'recharts';
-import { fetchCodeChefData } from '../services/api';
+import React, { useState, useEffect } from "react";
+import { fetchCodeChefData } from "../services/api";
 
-const CodeChefGraph = ({ handle }) => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
+const CodeChefGraph= ({ handle }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const getRatingColor = (rating) => {
-    if (rating >= 2200) return '#FF0000'; // Red
-    if (rating >= 1800) return '#FF7E00'; // Orange
-    if (rating >= 1600) return '#663399'; // Violet
-    if (rating >= 1400) return '#3366CC'; // Blue
-    return '#684200'; // Brown
-  };
+  const URL = "https://www.codechef.com/users/";
 
-  useEffect(() => {
-    const getData = async () => {
-      setLoading(true);
-      setHasError(false);
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const stats = await fetchCodeChefData(handle);
+        if (!stats) setError("Could not fetch CodeChef data.");
+        else setData(stats);
+      } catch {
+        setError("Error fetching CodeChef data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [handle]);
 
-      const result = await fetchCodeChefData(handle);
-      if (result) {
-        setData(result);
-      } else {
-        setHasError(true);
-        setData(null);
-      }
-      setLoading(false);
-    };
+  if (loading) return <div className="p-4 text-gray-400">Loading CodeChef...</div>;
+  if (error) return <div className="p-4 text-red-500">{error}</div>;
 
-    getData();
-  }, [handle]);
+  // Map the data keys to match the image structure
+  const currentRating = data.rating_number || data.currentRating;
+  const maxRating = data.max_rank || data.highestRating;
+  const starRating = data.rating || data.stars; 
+  const globalRank = data.global_rank || data.globalRank;
+  const countryRank = data.country_rank || data.countryRank;
+  const username = data.username || handle;
 
-  if (loading) {
-    return <div className="text-center py-8 text-gray-700">Loading CodeChef data...</div>;
-  }
+  return (
+    <div className="p-6 border border-gray-700 rounded shadow-lg bg-gray-900 text-gray-200">
+      {/* Title container uses flex to align title and button horizontally */}
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="text-xl font-bold text-white">CodeChef Profile</h3>
+        <a
+          href={`${URL}${handle}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3 py-1 text-sm font-semibold rounded-full 
+            bg-blue-600 hover:bg-blue-700 text-white transition duration-200 
+            dark:bg-github-accent dark:hover:bg-blue-600"
+        >
+          Visit Profile
+        </a>
+      </div>
 
-  if (hasError || !data || !data.currentRating) {
-    return (
-      <div className="card-wrapper shadow-xl mb-8">
-        <div className="card-inner p-6 text-center text-red-500">
-          Error: Could not retrieve CodeChef data. Check the handle or try again later.
-        </div>
-      </div>
-    );
-  }
-
-  const { currentRating, highestRating, stars, globalRank, countryRank } = data;
-  const ratingColor = getRatingColor(currentRating);
-
-  const chartData = [
-    { name: 'Highest Rating', value: highestRating, fill: 'var(--color-github-border)' },
-    { name: 'Current Rating', value: currentRating, fill: ratingColor },
-  ];
-
-  return (
-    <div className="card-wrapper shadow-xl mb-8">
-      <div className="card-inner p-6">
-        <h3 className="text-xl font-bold mb-2 flex justify-between items-center">
-          CodeChef Rating Overview
-          <span className="text-sm font-medium" style={{ color: ratingColor }}>
-            {stars} ({currentRating})
-          </span>
-        </h3>
-        <p className="text-sm text-gray-500 mb-2">
-          Highest achieved rating: {highestRating}
-        </p>
-        <p className="text-sm text-gray-500 mb-4">
-          Global Rank: {globalRank} | Country Rank: {countryRank}
-        </p>
-
-        <ResponsiveContainer width="100%" height={300}>
-          <RadialBarChart 
-            cx="50%" cy="50%" innerRadius="10%" outerRadius="80%" 
-            barSize={10} data={chartData} startAngle={90} endAngle={-270}
-          >
-            <RadialBar 
-              minAngle={15} 
-              label={{ position: 'insideStart', fill: '#fff' }} 
-              background 
-              clockWise 
-              dataKey="value"
-            />
-            <Legend 
-              iconSize={10} layout="vertical" verticalAlign="middle" align="right" 
-              wrapperStyle={{ color: 'var(--color-github-text)' }}
-            />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'rgba(var(--color-github-card-rgb), 0.95)', 
-                borderColor: 'var(--color-github-border)', 
-                borderRadius: '8px' 
-              }} 
-              labelStyle={{ color: 'var(--color-github-accent)' }}
-              itemStyle={{ color: 'var(--color-github-text)' }}
-            />
-          </RadialBarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
+      <table className="w-full border-collapse text-left text-gray-200">
+        <tbody>
+          <tr className="hover:bg-gray-800 transition duration-150">
+            <td className="p-2 font-semibold border-b border-gray-700">Username</td>
+            <td className="p-2 border-b border-gray-700">{username}</td>
+          </tr>
+          <tr className="hover:bg-gray-800 transition duration-150">
+            <td className="p-2 font-semibold border-b border-gray-700">Current Rating</td>
+            <td className="p-2 border-b border-gray-700">{currentRating} ({starRating})</td>
+          </tr>
+          <tr className="hover:bg-gray-800 transition duration-150">
+            <td className="p-2 font-semibold border-b border-gray-700">Highest Rating</td>
+            <td className="p-2 border-b border-gray-700">{maxRating}</td>
+          </tr>
+          <tr className="hover:bg-gray-800 transition duration-150">
+            <td className="p-2 font-semibold border-b border-gray-700">Global Rank</td>
+            <td className="p-2 border-b border-gray-700">{globalRank}</td>
+          </tr>
+          <tr className="hover:bg-gray-800 transition duration-150">
+            <td className="p-2 font-semibold">Country Rank</td>
+            <td className="p-2">{countryRank}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
 };
 
 export default CodeChefGraph;

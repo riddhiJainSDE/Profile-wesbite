@@ -1,37 +1,41 @@
-import React from 'react';
-import CodeforcesGraph from '../components/CodeforcesGraph';
-import CodeChefGraph from '../components/CodeChefGraph';
-import LazyAnimate from '../components/LazyAnimate';
+// src/pages/CodingProfiles.jsx
+import React from "react";
+import LazyAnimate from "../components/LazyAnimate";
+import CodeforcesGraph from "../components/CodeforcesGraph";
+import CodeChefGraph from "../components/CodeChefGraph";
+import LeetCodeGraph from "../components/LeetCodeGraph";
 
 const CodingProfiles = () => {
-  // Your profile handles
-  const codeforcesHandle = 'rid.dhi_1509';
-  const codechefHandle = 'nice_scene_20';
+  const codeforcesHandle = "rid.dhi_1509";
+  const codechefHandle = "nice_scene_20";
+  const leetcodeUsername = "jainriddhi78";
 
   return (
-    // Assuming the parent container or body has the 'dark' class applied 
-    // for dark mode styling if needed.
-    <div className="p-4 md:p-8 space-y-10 dark"> 
+    <div className="p-4 md:p-8 space-y-10 dark">
       <h2 className="text-3xl font-extrabold text-github-text mb-6 border-b border-github-border pb-3">
-        Competitive Programming Dashboard(Live data fetched)
+        Competitive Programming Dashboard (Live Data)
       </h2>
 
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
-        {/* Codeforces Graph - Full History */}
-         <LazyAnimate>
-        <CodeforcesGraph handle={codeforcesHandle} />
-         </LazyAnimate>
-        {/* CodeChef Graph - Rating Overview */}
+      <div className="grid grid-cols-1 gap-8">
         <LazyAnimate>
-        <CodeChefGraph handle={codechefHandle} />
+          <CodeforcesGraph handle={codeforcesHandle} />
+        </LazyAnimate>
+
+        <LazyAnimate>
+          <CodeChefGraph handle={codechefHandle} />
+        </LazyAnimate>
+
+        <LazyAnimate>
+          <LeetCodeGraph username={leetcodeUsername} />
         </LazyAnimate>
       </div>
 
       <div className="mt-12 p-4 border-t border-github-border text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Data fetched live from external APIs and visualized using Recharts. Handles: 
+          Data fetched live from APIs (Codeforces, CodeChef, LeetCode). Handles:
           <span className="font-mono text-github-accent ml-2">{codeforcesHandle}</span> (CF),
-          <span className="font-mono text-github-accent ml-2">{codechefHandle}</span> (CC).
+          <span className="font-mono text-github-accent ml-2">{codechefHandle}</span> (CC),
+          <span className="font-mono text-github-accent ml-2">{leetcodeUsername}</span> (LC)
         </p>
       </div>
     </div>
