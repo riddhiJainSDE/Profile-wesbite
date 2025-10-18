@@ -2,16 +2,17 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
-import { PROFILE_DATA } from "./src/data/profileData.js";
+import { PROFILE_DATA } from "./src/data/profileData.js"; // Assuming this path is correct
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
+// Set CORS to allow requests from the frontend deployment
 app.use(
   cors({
-    origin: "https://profile-wesbite.vercel.app/",
+    origin: "https://profile-wesbite.vercel.app", // Removed trailing slash for exact match
   })
 );
 
@@ -33,27 +34,31 @@ Location: ${PROFILE_DATA.user.location}
 Email: ${PROFILE_DATA.user.email}
 
 Skills:
-  - Languages: ${PROFILE_DATA.skills.languages
+  - Languages: ${PROFILE_DATA.skills.languages
     .map((s) => `${s.name} (${s.description})`)
     .join(", ")}
-  - Frontend: ${PROFILE_DATA.skills.frontend.map((s) => s.name).join(", ")}
-  - Backend: ${PROFILE_DATA.skills.backend.map((s) => s.name).join(", ")}
-  - ML/AI: ${PROFILE_DATA.skills.ml_ai.map((s) => s.name).join(", ")}
-  - Tools/DevOps: ${PROFILE_DATA.skills.tools_devops.map((s) => s.name).join(", ")}
+  - Frontend: ${PROFILE_DATA.skills.frontend.map((s) => s.name).join(", ")}
+  - Backend: ${PROFILE_DATA.skills.backend.map((s) => s.name).join(", ")}
+  - ML/AI: ${PROFILE_DATA.skills.ml_ai.map((s) => s.name).join(", ")}
+  - Tools/DevOps: ${PROFILE_DATA.skills.tools_devops.map((s) => s.name).join(", ")}
 
 Projects:
-${PROFILE_DATA.projects.map((p) => `  - ${p.name}: ${p.desc}`).join("\n")}
+${PROFILE_DATA.projects.map((p) => `  - ${p.name}: ${p.desc}`).join("\n")}
 
 Experience:
 ${PROFILE_DATA.experience
-  .map((e) => `  - ${e.title} at ${e.company} (${e.dates}): ${e.desc}`)
-  .join("\n")}
+    .map((e) => `  - ${e.title} at ${e.company} (${e.dates}): ${e.desc}`)
+    .join("\n")}
 
 Coding Profiles:
 ${PROFILE_DATA.codingProfiles
-  .map((c) => `  - ${c.name}: ${c.rank}, ${c.link}`)
-  .join("\n")}
+    .map((c) => `  - ${c.name}: ${c.rank}, ${c.link}`)
+    .join("\n")}
 `;
+
+// =======================================================
+// === 1. Gemini Chat Endpoint ===========================
+// =======================================================
 
 app.post("/api/chat", async (req, res) => {
   try {
@@ -84,20 +89,13 @@ Answer concisely.
       candidateCount: 1,
       maxOutputTokens: 500,
     });
-    console.log("Full Gemini response:", JSON.stringify(response, null, 2));
+    
     // Extract reply safely
-   let reply = "No response from AI";
-const firstCandidate = response?.candidates?.[0];
-if (firstCandidate && firstCandidate.content) {
-  if (Array.isArray(firstCandidate.content.parts)) {
-    reply = firstCandidate.content.parts.map((p) => p.text || "").join(" ");
-  } else if (typeof firstCandidate.content === "string") {
-    reply = firstCandidate.content;
-  } else if (firstCandidate.content.text) {
-    reply = firstCandidate.content.text;
-  }
-}
-
+    let reply = "No response from AI";
+    const firstCandidate = response?.candidates?.[0];
+    if (firstCandidate && firstCandidate.content) {
+      reply = firstCandidate.content.parts?.map((p) => p.text || "").join(" ") || firstCandidate.content.text || reply;
+    }
 
     console.log("Gemini reply:", reply);
     res.json({ reply });
@@ -107,65 +105,10 @@ if (firstCandidate && firstCandidate.content) {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+// =======================================================
+// === 2. Codeforces Proxy Endpoint ======================
+// =======================================================
 
-app.post("/api/leetcode", async (req, res) => {
-  const { username } = req.body;
-  if (!username) return res.status(400).json({ error: "Username required" });
-
-  try {
-    const response = await fetch("https://leetcode.com/graphql", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Origin: "https://leetcode.com",
-        Referer: "https://leetcode.com/",
-      },
-      body: JSON.stringify({
-        query: `
-          query getUserProfile($username: String!) {
-            matchedUser(username: $username) {
-              username
-              submitStatsGlobal {
-                acSubmissionNum {
-                  difficulty
-                  count
-                }
-              }
-              profile {
-                ranking
-                reputation
-              }
-            }
-          }
-        `,
-        variables: { username },
-      }),
-    });
-
-    const data = await response.json();
-    if (!data.data?.matchedUser) throw new Error("Invalid username");
-
-    const user = data.data.matchedUser;
-    res.json({
-      username: user.username,
-      easySolved: user.submitStatsGlobal.acSubmissionNum.find(d => d.difficulty === "Easy")?.count || 0,
-      mediumSolved: user.submitStatsGlobal.acSubmissionNum.find(d => d.difficulty === "Medium")?.count || 0,
-      hardSolved: user.submitStatsGlobal.acSubmissionNum.find(d => d.difficulty === "Hard")?.count || 0,
-      totalSolved: user.submitStatsGlobal.acSubmissionNum.find(d => d.difficulty === "All")?.count || 0,
-      ranking: user.profile.ranking,
-      reputation: user.profile.reputation,
-    });
-  } catch (error) {
-    console.error("Error fetching LeetCode via proxy:", error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
-// server.js (add below existing app.use(...) lines)
-
-// Codeforces proxy endpoint
 app.get("/api/codeforces/:handle", async (req, res) => {
   try {
     const handle = req.params.handle;
@@ -178,44 +121,73 @@ app.get("/api/codeforces/:handle", async (req, res) => {
   }
 });
 
-// LeetCode proxy endpoint
+
+// =======================================================
+// === 3. LeetCode Proxy Endpoint (Consolidated & Fixed) =
+// =======================================================
+
 app.post("/api/leetcode", async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ error: "Username required" });
+
   try {
-    const { username } = req.body;
-    const query = {
-      query: `
-        query getUserProfile($username: String!) {
-          matchedUser(username: $username) {
-            username
-            submitStatsGlobal {
-              acSubmissionNum {
-                difficulty
-                count
-              }
-            }
-            profile {
-              ranking
-              reputation
+    const LEETCODE_QUERY = `
+      query userStats($username: String!) {
+        matchedUser(username: $username) {
+          username
+          submitStatsGlobal {
+            acSubmissionNum {
+              difficulty
+              count
             }
           }
-          allQuestionsCount {
-            difficulty
-            count
+          userContestRanking {
+            rating
+            globalRanking
+            attendedContestsCount
           }
+          submissionCalendar
         }
-      `,
-      variables: { username }
-    };
+      }
+    `;
 
     const response = await fetch("https://leetcode.com/graphql", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(query),
+      body: JSON.stringify({
+        query: LEETCODE_QUERY,
+        variables: { username },
+      }),
     });
+
     const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    console.error("Error fetching LeetCode:", err.message);
-    res.status(500).json({ error: "Failed to fetch LeetCode data" });
+    const user = data.data?.matchedUser;
+
+    if (!user) throw new Error("Invalid username or no data returned");
+    
+    // Process and simplify the data structure for the frontend
+    const totalSolvedStats = user.submitStatsGlobal.acSubmissionNum;
+
+    res.json({
+      username: user.username,
+      easySolved: totalSolvedStats.find(d => d.difficulty === "Easy")?.count || 0,
+      mediumSolved: totalSolvedStats.find(d => d.difficulty === "Medium")?.count || 0,
+      hardSolved: totalSolvedStats.find(d => d.difficulty === "Hard")?.count || 0,
+      // Total solved count (may not be provided directly, but we don't need it if we sum E/M/H on frontend)
+      totalSolved: totalSolvedStats.find(d => d.difficulty === "All")?.count || 0, 
+      
+      // Send raw contest and calendar data for component processing
+      contestRanking: user.userContestRanking,
+      submissionCalendar: user.submissionCalendar,
+    });
+    
+  } catch (error) {
+    console.error("Error fetching LeetCode via proxy:", error.message);
+    res.status(500).json({ error: error.message || "Failed to fetch LeetCode data" });
   }
+});
+
+
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
