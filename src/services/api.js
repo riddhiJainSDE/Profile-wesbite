@@ -24,24 +24,24 @@ export const fetchCodeChefData = async (handle) => {
   }
 };
 
-export const fetchLeetCodeStats = async (username) => {
-  try {
-    const res = await fetch(`${BASE_URL}/api/leetcode`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username }),
-    });
+// export const fetchLeetCodeStats = async (username) => {
+//   try {
+//     const res = await fetch(`${BASE_URL}/api/leetcode`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ username }),
+//     });
 
-    if (!res.ok) {
-        // If the server returns a non-200 status (e.g., 400 or 500), 
-        // try to extract the specific error message from the JSON body.
-        const errorBody = await res.json();
-        throw new Error(errorBody.error || `Failed to fetch LeetCode data with status: ${res.status}`);
-    }
+//     if (!res.ok) {
+//         // If the server returns a non-200 status (e.g., 400 or 500), 
+//         // try to extract the specific error message from the JSON body.
+//         const errorBody = await res.json();
+//         throw new Error(errorBody.error || `Failed to fetch LeetCode data with status: ${res.status}`);
+//     }
 
-    return await res.json();
-  } catch (err) {
-    console.error("Error fetching LeetCode:", err.message);
-    return null;
-  }
-};
+//     return await res.json();
+//   } catch (err) {
+//     console.error("Error fetching LeetCode:", err.message);
+//     return null;
+//   }
+// };

@@ -3,7 +3,7 @@ import React from "react";
 import LazyAnimate from "../components/LazyAnimate";
 import CodeforcesGraph from "../components/CodeforcesGraph";
 import CodeChefGraph from "../components/CodeChefGraph";
-import LeetCodeGraph from "../components/LeetCodeGraph";
+
 
 const CodingProfiles = () => {
   const codeforcesHandle = "rid.dhi_1509";

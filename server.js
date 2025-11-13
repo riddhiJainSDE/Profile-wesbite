@@ -9,12 +9,26 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
+const allowedOrigins = [
+  "https://profile-wesbite.vercel.app",
+  "http://localhost:5173",
+];
 app.use(
-  cors({
-    origin: "https://profile-wesbite.vercel.app", 
-  })
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
 );
 
+app.options("*", cors());
 const PORT = process.env.PORT || 5000;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -125,94 +139,94 @@ app.get("/api/codeforces/:handle", async (req, res) => {
 // === 3. LeetCode Proxy Endpoint (FIXED WITH TIMEOUT) ===
 // =======================================================
 
-app.post("/api/leetcode", async (req, res) => {
-  const { username } = req.body;
-  if (!username) return res.status(400).json({ error: "Username required" });
+// app.post("/api/leetcode", async (req, res) => {
+//   const { username } = req.body;
+//   if (!username) return res.status(400).json({ error: "Username required" });
 
-  const LEETCODE_QUERY = `
-    query userStats($username: String!) {
-      matchedUser(username: $username) {
-        username
-        submitStatsGlobal {
-          acSubmissionNum {
-            difficulty
-            count
-          }
-        }
-        userContestRanking {
-          rating
-          globalRanking
-          attendedContestsCount
-        }
-        submissionCalendar
-      }
-    }
-  `;
+//   const LEETCODE_QUERY = `
+//     query userStats($username: String!) {
+//       matchedUser(username: $username) {
+//         username
+//         submitStatsGlobal {
+//           acSubmissionNum {
+//             difficulty
+//             count
+//           }
+//         }
+//         userContestRanking {
+//           rating
+//           globalRanking
+//           attendedContestsCount
+//         }
+//         submissionCalendar
+//       }
+//     }
+//   `;
   
-  // Helper function to set a timeout for the fetch request
-  const fetchWithTimeout = (url, options, timeout = 10000) => {
-    return Promise.race([
-      fetch(url, options),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Proxy fetch timed out')), timeout)
-      )
-    ]);
-  };
+//   // Helper function to set a timeout for the fetch request
+//   const fetchWithTimeout = (url, options, timeout = 10000) => {
+//     return Promise.race([
+//       fetch(url, options),
+//       new Promise((_, reject) =>
+//         setTimeout(() => reject(new Error('Proxy fetch timed out')), timeout)
+//       )
+//     ]);
+//   };
 
-  try {
-    // Use the timeout fetch helper
-    const response = await fetchWithTimeout("https://leetcode.com/graphql", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: LEETCODE_QUERY,
-        variables: { username },
-      }),
-    });
+//   try {
+//     // Use the timeout fetch helper
+//     const response = await fetchWithTimeout("https://leetcode.com/graphql", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({
+//         query: LEETCODE_QUERY,
+//         variables: { username },
+//       }),
+//     });
 
-    // Check if the response itself was OK (e.g., status 200)
-    if (!response.ok) {
-        throw new Error(`LeetCode API request failed with status: ${response.status}`);
-    }
+//     // Check if the response itself was OK (e.g., status 200)
+//     if (!response.ok) {
+//         throw new Error(`LeetCode API request failed with status: ${response.status}`);
+//     }
 
-    const data = await response.json();
-    const user = data.data?.matchedUser;
+//     const data = await response.json();
+//     const user = data.data?.matchedUser;
 
-    // Check if the user data was successfully retrieved (GraphQL errors often appear here)
-    if (!user || data.errors) {
-      console.error("LeetCode GraphQL Errors:", data.errors);
-      throw new Error(data.errors?.[0]?.message || "Invalid username or no user data found.");
-    }
-    
-    const totalSolvedStats = user.submitStatsGlobal.acSubmissionNum;
+//     // Check if the user data was successfully retrieved (GraphQL errors often appear here)
+//     if (!user || data.errors) {
+//       console.error("LeetCode GraphQL Errors:", data.errors);
+//       throw new Error(data.errors?.[0]?.message || "Invalid username or no user data found.");
+//     }
+//     
+//     const totalSolvedStats = user.submitStatsGlobal.acSubmissionNum;
 
-    res.json({
-      username: user.username,
-      easySolved: totalSolvedStats.find(d => d.difficulty === "Easy")?.count || 0,
-      mediumSolved: totalSolvedStats.find(d => d.difficulty === "Medium")?.count || 0,
-      hardSolved: totalSolvedStats.find(d => d.difficulty === "Hard")?.count || 0,
-      totalSolved: totalSolvedStats.find(d => d.difficulty === "All")?.count || 0, 
-      
-      contestRanking: user.userContestRanking || null, 
-      submissionCalendar: user.submissionCalendar || '{}',
-    });
-    
-  } catch (error) {
-    console.error("Error fetching LeetCode via proxy:", error.message);
-    
-    // Assign status based on error type
-    let status = 500;
-    if (error.message.includes("timed out")) {
-      status = 504; // Gateway Timeout
-    } else if (error.message.includes("Invalid username")) {
-      status = 400; // Bad Request
-    }
+//     res.json({
+//       username: user.username,
+//       easySolved: totalSolvedStats.find(d => d.difficulty === "Easy")?.count || 0,
+//       mediumSolved: totalSolvedStats.find(d => d.difficulty === "Medium")?.count || 0,
+//       hardSolved: totalSolvedStats.find(d => d.difficulty === "Hard")?.count || 0,
+//       totalSolved: totalSolvedStats.find(d => d.difficulty === "All")?.count || 0, 
+//       
+//       contestRanking: user.userContestRanking || null, 
+//       submissionCalendar: user.submissionCalendar || '{}',
+//     });
+//     
+//   } catch (error) {
+//     console.error("Error fetching LeetCode via proxy:", error.message);
+//     
+//     // Assign status based on error type
+//     let status = 500;
+//     if (error.message.includes("timed out")) {
+//       status = 504; // Gateway Timeout
+//     } else if (error.message.includes("Invalid username")) {
+//       status = 400; // Bad Request
+//     }
 
-    res.status(status).json({ error: error.message || "Failed to fetch LeetCode data on server" });
-  }
-});
+//     res.status(status).json({ error: error.message || "Failed to fetch LeetCode data on server" });
+//   }
+// });
 
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+// app.listen(PORT, () => {
+//   console.log(`✅ Server running on port ${PORT}`);
+// });
